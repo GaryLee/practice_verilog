@@ -121,6 +121,24 @@ class CreaterProjectUi(App):
                         ),
                     ],
                 )
+                yield Label("Test Proc:")
+                yield Input(
+                    placeholder="Test procedure name.",
+                    value="test_proc",
+                    id="test_proc",
+                    tooltip="Enter test procedure name.",
+                    validators=[
+                        Regex(
+                            r"^[a-zA-Z0-9_]+$",
+                            failure_description="Only alphanumeric characters and underscores are allowed.",
+                        ),
+                        Length(
+                            minimum=1,
+                            maximum=64,
+                            failure_description="Test procedure name must be between 1 and 64 characters.",
+                        ),
+                    ],
+                )
                 yield Label("DUT module:")
                 yield Input(
                     placeholder="DUT top module.",
@@ -139,13 +157,13 @@ class CreaterProjectUi(App):
                         ),
                     ],  
                 )
-                yield Label("Toplevel language:")
+                yield Label("HW Language:")
                 yield Select(
                     options=zip(SUPPORTED_TOP_LANG.keys(), SUPPORTED_TOP_LANG.keys()),
                     allow_blank=False,
                     id="toplevel_lang",
                 )
-                yield Label("Compilation arguments:")
+                yield Label("Compile args:")
                 yield Input(
                     placeholder="Compile arguments. Eg, -D xxx=yyy.",
                     id="compile_args",
@@ -194,6 +212,7 @@ class CreaterProjectUi(App):
         ns.project_name = self.get_widget_by_id(f"project_name").value
         ns.dut_file = self.get_widget_by_id("dut_file").value
         ns.dut_module = self.get_widget_by_id("dut_module").value
+        ns.test_proc = self.get_widget_by_id("test_proc").value
         ns.toplevel_lang = SUPPORTED_TOP_LANG[self.get_widget_by_id("toplevel_lang").value]
         ns.compile_args = self.get_widget_by_id("compile_args").value
         ns.simulator = self.get_widget_by_id("simulator").value
@@ -235,7 +254,7 @@ class CreaterProjectUi(App):
         self.rich_log(f"Created folder {target_folder}.", style=info_style)
 
         for fn in os.listdir(COCOTB_TEMPLATE):
-            if fn.lower() in ['makefile', 'dut.sv']:
+            if fn.lower() in ['makefile', 'dut.sv', 'test_proc.py']:
                 with open(path.join(target_folder, fn), "w") as f:
                     content = open(path.join(COCOTB_TEMPLATE, fn)).read()
                     f.write(content.format(**ns.__dict__))
