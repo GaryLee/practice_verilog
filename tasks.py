@@ -5,7 +5,7 @@ import re
 import shutil
 import sys
 import os
-from os import path
+from pathlib import Path
 from invoke import task, Program, Collection
 from textual import on
 from textual.app import App, ComposeResult
@@ -68,12 +68,28 @@ class FolderDontExistCheck(Validator):
 
     def validate(self, value: str) -> ValidationResult:
         """Check if the folder doesn't exist."""
-        if path.exists(value):
-            if path.isdir(value):
+        folder = Path(value)
+        if folder.exists():
+            if folder.is_dir():
                 return self.failure("Folder already exists.")
             else:
                 return self.failure("File with the same name already exists.")
         return self.success()
+
+class FolderExistCheck(Validator):
+    """A validator for checking if the folder exist."""
+
+    def validate(self, value: str) -> ValidationResult:
+        """Check if the folder doesn't exist."""
+        folder = Path(value)
+        if folder.is_dir():
+            return self.success()
+        elif not folder.exists():
+            return self.failure("Folder doesn't exist.")
+        elif folder.is_file():
+            return self.failure("It's a file, not a folder.")
+        else:
+            return self.failure("Unknown error.")
 
 
 class CreaterProjectUi(App):
@@ -97,10 +113,29 @@ class CreaterProjectUi(App):
                         ),
                         Length(
                             minimum=1,
-                            maximum=32,
-                            failure_description="Project name must be between 1 and 32 characters.",
+                            maximum=64,
+                            failure_description="Project name must be between 1 and 64 characters.",
                         ),
                         FolderDontExistCheck(),
+                    ],
+                )
+                yield Label("Parent Folder:")
+                yield Input(
+                    placeholder="Parent Folder",
+                    id="parent_folder",
+                    tooltip="Enter the parent folder",
+                    value=os.getcwd(),
+                    validators=[
+                        Regex(
+                            r"^[a-zA-Z0-9_ /]+$",
+                            failure_description="Only alphanumeric characters and underscores are allowed.",
+                        ),
+                        Length(
+                            minimum=1,
+                            maximum=1024,
+                            failure_description="Project folder must be between 1 and 1024 characters.",
+                        ),
+                        FolderExistCheck(),
                     ],
                 )
                 yield Label("DUT File:")
@@ -116,8 +151,8 @@ class CreaterProjectUi(App):
                         ),
                         Length(
                             minimum=1,
-                            maximum=32,
-                            failure_description="DUT name must be between 1 and 32 characters including file extension.",
+                            maximum=64,
+                            failure_description="DUT name must be between 1 and 64 characters including file extension.",
                         ),
                     ],
                 )
@@ -152,8 +187,8 @@ class CreaterProjectUi(App):
                         ),
                         Length(
                             minimum=1,
-                            maximum=32,
-                            failure_description="DUT name must be between 1 and 32 characters.",
+                            maximum=64,
+                            failure_description="DUT name must be between 1 and 64 characters.",
                         ),
                     ],  
                 )
@@ -210,6 +245,7 @@ class CreaterProjectUi(App):
     def action_create_project(self) -> None:
         ns = SimpleNamespace()
         ns.project_name = self.get_widget_by_id(f"project_name").value
+        ns.parent_folder = self.get_widget_by_id(f"parent_folder").value
         ns.dut_file = self.get_widget_by_id("dut_file").value
         ns.dut_module = self.get_widget_by_id("dut_module").value
         ns.test_proc = self.get_widget_by_id("test_proc").value
@@ -226,6 +262,9 @@ class CreaterProjectUi(App):
         error_style = "magenta"
         info_style = ""
         success_style = "green"
+        if not Path(ns.parent_folder).exists():
+            self.rich_log("Project folder don't exists.", style=error_style)
+            error_count += 1
         if not re.match(r"^[a-zA-Z0-9_]+$", ns.project_name):
             self.rich_log("Project name is invalid.", style=error_style)
             error_count += 1
@@ -235,11 +274,11 @@ class CreaterProjectUi(App):
         if error_count:
             return
         # Pre-check the parameters.
-        if not path.isdir(COCOTB_TEMPLATE):
+        if not Path(COCOTB_TEMPLATE).is_dir():
             self.rich_log(f"Folder {COCOTB_TEMPLATE} doesn't exist.", style=error_style)
             error_count += 1
-        target_folder = path.join(".", ns.project_name)
-        if path.exists(target_folder):
+        target_folder = Path(".") / ns.parent_folder / ns.project_name 
+        if Path(target_folder).exists():
             self.rich_log(f"Folder {target_folder} already exists.", style=error_style)
             error_count += 1
         if error_count:
@@ -247,20 +286,21 @@ class CreaterProjectUi(App):
                 
         # Create the project.
         self.rich_log("Creating project...", style=info_style)
+
         os.makedirs(target_folder)
-        if not path.isdir(target_folder):
+        if not Path(target_folder).is_dir():
             self.rich_log(f"Failed to create folder {target_folder}.", style=error_style)
             return
         self.rich_log(f"Created folder {target_folder}.", style=info_style)
 
         for fn in os.listdir(COCOTB_TEMPLATE):
             if fn.lower() in ['makefile', 'dut.sv', 'test_proc.py']:
-                with open(path.join(target_folder, fn), "w") as f:
-                    content = open(path.join(COCOTB_TEMPLATE, fn)).read()
+                with open(Path(target_folder) / fn, "w") as f:
+                    content = open(Path(COCOTB_TEMPLATE) / fn).read()
                     f.write(content.format(**ns.__dict__))
                 self.rich_log(f"Generated {fn} to {target_folder}", style=info_style)
             else:
-                shutil.copy(path.join(COCOTB_TEMPLATE, fn), target_folder)
+                shutil.copy(Path(COCOTB_TEMPLATE) / fn, target_folder)
                 self.rich_log(f"Copied {fn} to {target_folder}", style=info_style)
         self.rich_log("Project created succssfully.", style=success_style)
 
