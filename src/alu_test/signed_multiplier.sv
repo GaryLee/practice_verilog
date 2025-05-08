@@ -1,3 +1,10 @@
+/**
+ * @file signed_multiplier.sv Signed multiplication module with saturation supported.
+ * 
+ * This module implements a signed multiplier with overflow and underflow detection.
+ * It takes two signed N-bit inputs and produces a signed N-bit output.
+ * The module also provides overflow and underflow flags.
+ */
 module signed_multiplier #(parameter N = 8) (
     input logic signed [N-1:0] a,
     input logic signed [N-1:0] b,

@@ -1,4 +1,12 @@
-
+/**
+ * @file signed_adder.sv Signed adder module with saturation supported.
+ *
+ * This module implements a signed adder that can detect overflow and underflow conditions.
+ * It takes two N-bit signed inputs and produces an N-bit signed output along with overflow
+ * and underflow flags.
+ *
+ * @param N Number of bits for the signed inputs and output (default is 8).
+ */
 module signed_adder #(parameter N = 8) (
     input logic [N-1:0] a,
     input logic [N-1:0] b,
