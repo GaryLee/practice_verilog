@@ -124,7 +124,7 @@ class CreaterProjectUi(App):
                     placeholder="Parent Folder",
                     id="parent_folder",
                     tooltip="Enter the parent folder",
-                    value=os.getcwd(),
+                    value = str(Path.cwd() / "src") if (Path.cwd() / "src").is_dir() else str(Path.cwd()),
                     validators=[
                         Regex(
                             r"^[a-zA-Z0-9_ /]+$",
@@ -141,20 +141,9 @@ class CreaterProjectUi(App):
                 yield Label("DUT File:")
                 yield Input(
                     placeholder="DUT file.",
-                    value="dut.sv",
+                    value=r"$(wildcard *.v) $(wildcard *.sv) $(wildcard *.vhdl)",
                     id="dut_file",
                     tooltip="Enter the filename of DUT.",
-                    validators=[
-                        Regex(
-                            r"^[a-zA-Z0-9_]+\.(v|sv|vhdl)$",
-                            failure_description="Only alphanumeric characters and underscores are allowed.",
-                        ),
-                        Length(
-                            minimum=1,
-                            maximum=64,
-                            failure_description="DUT name must be between 1 and 64 characters including file extension.",
-                        ),
-                    ],
                 )
                 yield Label("Test Proc:")
                 yield Input(
