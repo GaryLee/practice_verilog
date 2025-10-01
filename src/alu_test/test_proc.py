@@ -14,7 +14,7 @@ from sim_utils import *
 from itertools import permutations
 
 @cocotb.test()
-async def {test_proc} (dut):
+async def test_proc(dut):
     # Generate clocks and initialization.
     clk_freq = 1e6
     clk_period_ns = int(1.0 / clk_freq * 1e9)
