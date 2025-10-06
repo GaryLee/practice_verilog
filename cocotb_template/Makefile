@@ -4,6 +4,7 @@
 PWD=$(shell pwd)
 
 # The source files to be tested.
+# VERILOG_SOURCES = $(wildcard *.v) $(wildcard *.sv) $(wildcard *.vhdl)
 VERILOG_SOURCES = {dut_file}
 
 # The top module to be tested.
