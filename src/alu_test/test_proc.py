@@ -19,9 +19,8 @@ async def test_proc(dut):
     clk_freq = 1e6
     clk_period_ns = int(1.0 / clk_freq * 1e9)
     cocotb.start_soon(Clock(dut.clk, period_ns(clk_period_ns), units="ns").start())
-
     # Show the information of DUT.
-    dut._log.info(f"DUT: {{dut._name}}")
+    dut._log.info(f"DUT: {dut._name}")
     dut.rst_n.value = 0
     dut.a.value = 0
     dut.b.value = 0
@@ -31,9 +30,10 @@ async def test_proc(dut):
     for i, j in permutations(range(256), 2):
         dut.a.value = i
         dut.b.value = j
+        dut.op_sel.value = 0
         await (2@cycles(dut.clk, rising=True))
-        result = dut.c.value
+        result = dut.result.value
         answer = (i + j) & 0xFF
-        assert result == answer, f"Result mismatch: {{dut.a.value=}}, {{dut.b.value=}}, {{dut.c.value=}}"
+        assert result == answer, f"Result mismatch: {dut.a.value=}, {dut.b.value=}, {dut.result.value=}"
         
     dut._log.info("TEST DONE!")

@@ -15,7 +15,7 @@ module dut(
     output logic uv  // Underflow flag
 
 );
-    localparam int N=`N;
+    parameter int N=`N;
     logic [N-1:0] adder_a, adder_b, adder_result;
     logic adder_ov, adder_uv;
     logic [N-1:0] multiplier_a, multiplier_b, multiplier_result;
