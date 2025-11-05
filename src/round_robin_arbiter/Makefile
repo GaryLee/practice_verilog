@@ -4,7 +4,8 @@
 PWD=$(shell pwd)
 
 # The source files to be tested.
-VERILOG_SOURCES = dut.sv round_robin_arbiter.sv
+# VERILOG_SOURCES = $(wildcard *.v) $(wildcard *.sv) $(wildcard *.vhdl)
+VERILOG_SOURCES = dut.sv req_grant_fifo.sv
 
 # The top module to be tested.
 TOPLEVEL = dut
