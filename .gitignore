@@ -169,4 +169,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# MacOS system files.
 .DS_Store
+
+# Simulation build artifacts
+**/sim_build/
+results.xml
