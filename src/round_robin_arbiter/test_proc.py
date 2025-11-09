@@ -21,7 +21,7 @@ async def test_proc(dut):
     cocotb.start_soon(Clock(dut.clk, period_ns(clk_period_ns), units="ns").start())
 
     # Show the information of DUT.
-    dut._log.info(f"DUT: {{dut._name}}")
+    dut._log.info(f"DUT: {dut._name}")
     dut.rst_n.value = 0
     dut.a.value = 0
     dut.b.value = 0
@@ -34,6 +34,6 @@ async def test_proc(dut):
         await (2@cycles(dut.clk, rising=True))
         result = dut.c.value
         answer = (i + j) & 0xFF
-        assert result == answer, f"Result mismatch: {{dut.a.value=}}, {{dut.b.value=}}, {{dut.c.value=}}"
+        assert result == answer, f"Result mismatch: {dut.a.value=}, {dut.b.value=}, {dut.c.value=}"
         
     dut._log.info("TEST DONE!")
