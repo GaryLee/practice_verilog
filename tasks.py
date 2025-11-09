@@ -285,7 +285,7 @@ class CreaterProjectUi(App):
         for fn in os.listdir(COCOTB_TEMPLATE):
             if fn.lower() in ['makefile', 'dut.sv', 'test_proc.py']:
                 with open(Path(target_folder) / fn, "w") as f:
-                    content = open(Path(COCOTB_TEMPLATE) / fn).read()
+                    content = (Path(COCOTB_TEMPLATE) / fn).read_text()
                     f.write(content.format(**ns.__dict__))
                 self.rich_log(f"Generated {fn} to {target_folder}", style=info_style)
             else:
