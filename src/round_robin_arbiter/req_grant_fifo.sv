@@ -23,9 +23,8 @@ module req_grant_fifo #(
     always_comb begin
         double_req_onehot = '0;
         for (int i = 0; i < NUM_CLIENTS*2; i++) begin
-            if (double_req[i] && grant_pointer[i % NUM_CLIENTS]) begin
+            if (double_req[i] && grant_pointer[i % NUM_CLIENTS] && double_req_onehot == '0) begin
                 double_req_onehot[i] = 1'b1;
-                break;
             end
         end
     end
