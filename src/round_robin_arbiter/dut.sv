@@ -2,17 +2,17 @@
 module dut(
     input logic clk, 
     input logic rst_n,
-    input logic [7:0] a,
-    input logic [7:0] b,
-    output logic [7:0] c
+    input logic [3:0] req,
+    output logic [3:0] grant
 );
 
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        c <= 8'h00;
-    end else begin
-        c <= a + b;
-    end
-end 
+    req_grant_fifo #(
+        .NUM_CLIENTS(4)
+    ) u_req_grant_fifo (
+        .clk(clk),
+        .rst_n(rst_n),
+        .req(req),
+        .grant(grant)
+    );
 
 endmodule

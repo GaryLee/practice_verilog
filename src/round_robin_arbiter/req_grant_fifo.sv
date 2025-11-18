@@ -11,6 +11,7 @@ module req_grant_fifo #(
     logic [NUM_CLIENTS*2-1:0] double_req;
     logic [NUM_CLIENTS*2-1:0] double_req_onehot;
     logic [NUM_CLIENTS-1:0] req_onehot;
+    logic [NUM_CLIENTS-1:0] req_onehot_hist;
     logic [NUM_CLIENTS-1:0] req_onehot_fifo[NUM_CLIENTS];
     logic [NUM_CLIENTS-1:0] fifo_occupied;
     logic has_freq;
