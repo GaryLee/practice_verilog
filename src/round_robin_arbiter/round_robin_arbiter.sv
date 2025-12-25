@@ -1,237 +1,88 @@
+/**
+ * N-Input Round Robin Arbiter.
+ *
+ */
 module round_robin_arbiter #(
-    parameter int NUM_PORTS = 4,
-    parameter int PORT_WIDTH = $clog2(NUM_PORTS)
+    parameter int N = 4
 ) (
-    input  logic                    clk,
-    input  logic                    rst_n,
-    input  logic [NUM_PORTS-1:0]    req,        // Request signals
-    output logic [NUM_PORTS-1:0]    grant,      // Grant signals
-    output logic [PORT_WIDTH-1:0]   grant_id,   // Granted port ID
-    output logic                    grant_valid // Grant valid signal
+    input logic rst_n,         ///< Asynchronous active low reset
+    input logic clk,            ///< Clock input.
+    input logic [N-1:0] req,    ///< Request inputs.
+    output logic [N-1:0] grant ///< Grant outputs.
 );
+    genvar i;
 
-    // Internal signals
-    logic [NUM_PORTS-1:0] priority_mask;
-    logic [NUM_PORTS-1:0] masked_req;
-    logic [NUM_PORTS-1:0] unmasked_req;
-    logic [NUM_PORTS-1:0] grant_masked;
-    logic [NUM_PORTS-1:0] grant_unmasked;
-    logic                 no_req_masked;
+    logic [N-1:0] rotate_ptr;
+    logic [N-1:0] mask_req;
+    logic [N-1:0] mask_grant;
+    logic [N-1:0] grant_comb;
 
-    // Priority mask register - tracks next priority to serve
+    logic no_mask_req;
+    logic [N-1:0] no_mask_grant;
+    logic update_ptr;
+
+
+    // Rotate pointer update logic.
+    // Rotate pointer is the bitmask that bit order higher than the last granted request are set to 1.
+    // E.g., if N=4 and last granted request is req[1], rotate_ptr = 1100.
+    //       If the last granted requst is req[N-1], rotate_ptr is N'b111..11.
+    // rotate_ptr[0] <= grant[N-1];
+    // rotate_ptr[1] <= grant[N-1] | grant[0];
+    // rotate_ptr[2] <= grant[N-1] | grant[1] | grant[0];
+    // ...
+
+    assign update_ptr = |grant; // Update rotate pointer when any grant is issued.
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            priority_mask <= '1;  // All ports have priority on reset
-        end else if (grant_valid) begin
-            // Update priority mask: granted port and lower priority ports lose priority
-            priority_mask <= priority_mask & ~((grant - 1'b1) | grant);
-            
-            // If all ports lose priority, reset mask
-            if ((priority_mask & ~((grant - 1'b1) | grant)) == '0) begin
-                priority_mask <= '1;
-            end
+        if (~rst_n) begin
+            rotate_ptr[0] <= 'b1;
+        end else if (update_ptr) begin
+            rotate_ptr[0] <= grant[N-1];
         end
     end
 
-    // Generate masked requests
-    assign masked_req = req & priority_mask;
-    assign unmasked_req = req;
-
-    // Check if there are any masked requests
-    assign no_req_masked = (masked_req == '0);
-
-    // Priority encoder for masked requests
-    always_comb begin
-        grant_masked = '0;
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            if (masked_req[i]) begin
-                grant_masked[i] = 1'b1;
-                break;
+    generate
+        for (i = 1; i < N; i = i + 1) begin : gen_mask_req
+            always_ff @(posedge clk or negedge rst_n) begin
+                if (~rst_n) begin
+                    rotate_ptr[i] <= 1'b1;
+                end else if (update_ptr) begin
+                    rotate_ptr[i] <= grant[N-1] | (|grant[i-1:0]);
+                end
             end
         end
-    end
+    endgenerate
 
-    // Priority encoder for unmasked requests
-    always_comb begin
-        grant_unmasked = '0;
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            if (unmasked_req[i]) begin
-                grant_unmasked[i] = 1'b1;
-                break;
-            end
+    // Mask grant generation logic.
+    assign mask_req = req & rotate_ptr;
+    assign mask_grant[0] = mask_req[0];
+
+    generate
+        for (i = 1; i < N; i = i + 1) begin : gen_mask_grant
+            assign mask_grant[i] = mask_req[i] & (~|mask_req[i-1:0]);
         end
-    end
+    endgenerate
 
-    // Select final grant signal
-    assign grant = no_req_masked ? grant_unmasked : grant_masked;
-    assign grant_valid = |req;
-
-    // Generate grant ID
-    always_comb begin
-        grant_id = '0;
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            if (grant[i]) begin
-                grant_id = i[PORT_WIDTH-1:0];
-                break;
-            end
+    // Non-mask grant generation logic.
+    // The lowest bit indexed request has the highest priority.
+    // Grant to the lowest numbered request when no masked requests are present.
+    assign no_mask_grant[0] = req[0];
+    generate
+        for (i = 1; i < N; i = i + 1) begin : gen_no_mask_grant
+            assign no_mask_grant[i] = (~|req[i-1:0]) & req[i];
         end
-    end
+    endgenerate
 
-endmodule
+    // Grant generation logic.
+    assign no_mask_req = ~|mask_req; // Is there no any masked request present?
+    assign grant_comb = mask_grant | (no_mask_grant & {N{no_mask_req}});
 
-// Alternative implementation using more synthesizable approach
-module round_robin_arbiter_v2 #(
-    parameter NUM_PORTS = 4,
-    parameter PORT_WIDTH = $clog2(NUM_PORTS)
-) (
-    input  logic                    clk,
-    input  logic                    rst_n,
-    input  logic [NUM_PORTS-1:0]    req,
-    output logic [NUM_PORTS-1:0]    grant,
-    output logic [PORT_WIDTH-1:0]   grant_id,
-    output logic                    grant_valid
-);
-
-    // Round robin pointer
-    logic [PORT_WIDTH-1:0] rr_ptr;
-    
-    // Rotated request and grant vectors
-    logic [NUM_PORTS-1:0] req_rotated;
-    logic [NUM_PORTS-1:0] grant_rotated;
-    
-    // Update round robin pointer
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            rr_ptr <= '0;
-        end else if (grant_valid) begin
-            if (rr_ptr == NUM_PORTS - 1) begin
-                rr_ptr <= '0;
-            end else begin
-                rr_ptr <= rr_ptr + 1'b1;
-            end
+        if (~rst_n) begin
+            grant <= {N{1'b0}};
+        end else if (|(grant & req)) begin // If request is still asserted, hold the grant.
+            grant <= grant;
+        end else begin
+            grant <= grant_comb & ~grant;
         end
     end
-    
-    // Rotate request vector based on round robin pointer
-    always_comb begin
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            req_rotated[i] = req[(i + rr_ptr) % NUM_PORTS];
-        end
-    end
-    
-    // Priority encoder for rotated requests
-    always_comb begin
-        grant_rotated = '0;
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            if (req_rotated[i]) begin
-                grant_rotated[i] = 1'b1;
-                break;
-            end
-        end
-    end
-    
-    // Rotate grant vector back to original positions
-    always_comb begin
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            grant[i] = grant_rotated[(i - rr_ptr + NUM_PORTS) % NUM_PORTS];
-        end
-    end
-    
-    // Generate grant valid and grant ID
-    assign grant_valid = |req;
-    
-    always_comb begin
-        grant_id = '0;
-        for (int i = 0; i < NUM_PORTS; i++) begin
-            if (grant[i]) begin
-                grant_id = i[PORT_WIDTH-1:0];
-                break;
-            end
-        end
-    end
-
 endmodule
-
-// Testbench
-module tb_round_robin_arbiter;
-    parameter NUM_PORTS = 4;
-    parameter PORT_WIDTH = $clog2(NUM_PORTS);
-
-    logic                    clk;
-    logic                    rst_n;
-    logic [NUM_PORTS-1:0]    req;
-    logic [NUM_PORTS-1:0]    grant;
-    logic [PORT_WIDTH-1:0]   grant_id;
-    logic                    grant_valid;
-
-    // Instantiate the arbiter
-    round_robin_arbiter #(
-        .NUM_PORTS(NUM_PORTS)
-    ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .req(req),
-        .grant(grant),
-        .grant_id(grant_id),
-        .grant_valid(grant_valid)
-    );
-
-    // Clock generation
-    initial begin
-        clk = 0;
-        forever #5 clk = ~clk;
-    end
-
-    // Test sequence
-    initial begin
-        // Initialize
-        rst_n = 0;
-        req = 4'b0000;
-        
-        // Reset
-        repeat(2) @(posedge clk);
-        rst_n = 1;
-        
-        // Test case 1: All ports request simultaneously
-        @(posedge clk);
-        req = 4'b1111;
-        repeat(8) @(posedge clk);
-        
-        // Test case 2: Partial port requests
-        req = 4'b1010;
-        repeat(4) @(posedge clk);
-        
-        // Test case 3: Single port request
-        req = 4'b0100;
-        repeat(2) @(posedge clk);
-        
-        // Test case 4: No requests
-        req = 4'b0000;
-        repeat(2) @(posedge clk);
-        
-        // Test case 5: Intermittent requests
-        req = 4'b1001;
-        repeat(3) @(posedge clk);
-        req = 4'b0110;
-        repeat(3) @(posedge clk);
-        
-        $finish;
-    end
-
-    // Monitor outputs
-    always @(posedge clk) begin
-        if (grant_valid) begin
-            $display("Time: %0t, REQ: %b, GRANT: %b, GRANT_ID: %0d", 
-                     $time, req, grant, grant_id);
-        end
-    end
-
-    // Check for multiple grants (should never happen)
-    always @(posedge clk) begin
-        if (grant_valid && $countones(grant) > 1) begin
-            $error("Multiple grants detected at time %0t: GRANT = %b", $time, grant);
-        end
-    end
-
-endmodule
-

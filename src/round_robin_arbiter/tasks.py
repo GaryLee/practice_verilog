@@ -30,7 +30,7 @@ def waveform(c, args=""):
         print("No waveform viewer found (tried: " + ", ".join(tools.keys()) + ")")
         return
     cmd = found_tools[0]
-    tool_args = tools[cmd].format(fst_file='sim_build/dut.fst')
+    tool_args = tools[cmd].format(fst_file='sim_build/top.fst')
     cmd_line = ' '.join([cmd, tool_args, args])
     c.run(cmd_line)
 

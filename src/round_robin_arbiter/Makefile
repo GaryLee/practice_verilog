@@ -1,33 +1,29 @@
-# Makefile
+# Define the default simulator (e.g., icarus, ghdl, questa, xcelium)
+SIM ?= icarus
 
-# Get the current working directory.
-PWD=$(shell pwd)
+# SIM ?= verilator
+# # Enable SystemVerilog
+# VFLAGS += -sv
 
-# The source files to be tested.
-# VERILOG_SOURCES = $(wildcard *.v) $(wildcard *.sv) $(wildcard *.vhdl)
-VERILOG_SOURCES = dut.sv req_grant_fifo.sv
+# Define the top-level language (verilog or vhdl)
+TOPLEVEL_LANG ?= verilog
 
-# The top module to be tested.
-TOPLEVEL = dut
+# Name of the top-level entity/module in your HDL design
+TOPLEVEL = top
 
-# The name of module for test.
-MODULE = test_proc
+# Name of the Python module containing your test cases (without the .py extension)
+COCOTB_TEST_MODULES = testbench
 
-# The compiler arguments. Define any macro for verilog.
-COMPILE_ARGS = 
-
-# Specify the top level language. Set it to verilog which support SystemVerilog as well.
-TOPLEVEL_LANG = verilog
-
-# Specify the simulator you want to use. 
-SIM = icarus
-
-# Any arguments or flags to pass to the execution of the compiled simulation.
-SIM_ARGS = 
-
-# Set WAVES to 1 to enable waveform dumping. A file with extension .fst will be created in the sim_build directory.
-# Use GTKWave to view the waveform.
+# Enable tracing (waveform generation)
 WAVES = 1
 
-# Include the cocotb makefiles.
+# Specify your HDL source files
+VERILOG_SOURCES = $(PWD)/top.sv $(PWD)/round_robin_arbiter.sv $(PWD)/request_queue.sv $(PWD)/round_robin_queue_arbiter.sv
+
+# Include the main cocotb Makefile to handle build and simulation rules
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# Optional: Add custom targets or configurations
+clean::
+	rm -rf sim_build
+	rm -rf __pycache__
