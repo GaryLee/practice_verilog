@@ -40,37 +40,31 @@ module round_robin_arbiter #(
         end
     end
 
-    generate
-        for (i = 1; i < N; i = i + 1) begin : gen_mask_req
-            always_ff @(posedge clk or negedge rst_n) begin
-                if (~rst_n) begin
-                    rotate_ptr[i] <= 1'b1;
-                end else if (update_ptr) begin
-                    rotate_ptr[i] <= grant[N-1] | (|grant[i-1:0]);
-                end
+    for (i = 1; i < N; i = i + 1) begin : gen_mask_req
+        always_ff @(posedge clk or negedge rst_n) begin
+            if (~rst_n) begin
+                rotate_ptr[i] <= 1'b1;
+            end else if (update_ptr) begin
+                rotate_ptr[i] <= grant[N-1] | (|grant[i-1:0]);
             end
         end
-    endgenerate
+    end
 
     // Mask grant generation logic.
     assign mask_req = req & rotate_ptr;
     assign mask_grant[0] = mask_req[0];
 
-    generate
-        for (i = 1; i < N; i = i + 1) begin : gen_mask_grant
-            assign mask_grant[i] = mask_req[i] & (~|mask_req[i-1:0]);
-        end
-    endgenerate
+    for (i = 1; i < N; i = i + 1) begin : gen_mask_grant
+        assign mask_grant[i] = mask_req[i] & (~|mask_req[i-1:0]);
+    end
 
     // Non-mask grant generation logic.
     // The lowest bit indexed request has the highest priority.
     // Grant to the lowest numbered request when no masked requests are present.
     assign no_mask_grant[0] = req[0];
-    generate
-        for (i = 1; i < N; i = i + 1) begin : gen_no_mask_grant
-            assign no_mask_grant[i] = (~|req[i-1:0]) & req[i];
-        end
-    endgenerate
+    for (i = 1; i < N; i = i + 1) begin : gen_no_mask_grant
+        assign no_mask_grant[i] = (~|req[i-1:0]) & req[i];
+    end
 
     // Grant generation logic.
     assign no_mask_req = ~|mask_req; // Is there no any masked request present?
