@@ -10,8 +10,6 @@ module round_robin_arbiter #(
     input logic [N-1:0] req,    ///< Request inputs.
     output logic [N-1:0] grant ///< Grant outputs.
 );
-    genvar i;
-
     logic [N-1:0] rotate_ptr;
     logic [N-1:0] mask_req;
     logic [N-1:0] mask_grant;
@@ -40,7 +38,7 @@ module round_robin_arbiter #(
         end
     end
 
-    for (i = 1; i < N; i = i + 1) begin : gen_mask_req
+    for (genvar i = 1; i < N; i = i + 1) begin : gen_mask_req
         always_ff @(posedge clk or negedge rst_n) begin
             if (~rst_n) begin
                 rotate_ptr[i] <= 1'b1;
@@ -54,7 +52,7 @@ module round_robin_arbiter #(
     assign mask_req = req & rotate_ptr;
     assign mask_grant[0] = mask_req[0];
 
-    for (i = 1; i < N; i = i + 1) begin : gen_mask_grant
+    for (genvar i = 1; i < N; i = i + 1) begin : gen_mask_grant
         assign mask_grant[i] = mask_req[i] & (~|mask_req[i-1:0]);
     end
 
@@ -62,7 +60,7 @@ module round_robin_arbiter #(
     // The lowest bit indexed request has the highest priority.
     // Grant to the lowest numbered request when no masked requests are present.
     assign no_mask_grant[0] = req[0];
-    for (i = 1; i < N; i = i + 1) begin : gen_no_mask_grant
+    for (genvar i = 1; i < N; i = i + 1) begin : gen_no_mask_grant
         assign no_mask_grant[i] = (~|req[i-1:0]) & req[i];
     end
 
