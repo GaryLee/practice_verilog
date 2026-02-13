@@ -17,8 +17,7 @@ from itertools import permutations
 async def test_proc (dut):
     # Generate clocks and initialization.
     clk_freq = 1e6 # The clock frequency in Hz.
-    clk_period_ns = int(1.0 / clk_freq * 1e9)
-    cocotb.start_soon(Clock(dut.clk, period_ns(clk_period_ns), units="ns").start())
+    cocotb.start_soon(Clock(dut.clk, period_ns(freq_hz=clk_freq), unit="ns").start())
 
     # Show the information of DUT.
     dut._log.info(f"DUT: {dut._name}")
@@ -28,12 +27,14 @@ async def test_proc (dut):
     await (dut.clk@posedge)
     dut.rst_n.value = 1
     await (dut.clk@posedge)
+
     for i, j in permutations(range(256), 2):
         dut.a.value = i
         dut.b.value = j
         await (2@cycles(dut.clk, rising=True))
         result = dut.c.value
         answer = (i + j) & 0xFF
-        assert result == answer, f"Result mismatch: {dut.a.value=}, {dut.b.value=}, {dut.c.value=}"
+        answer_sat = min(i + j, 255)
+        assert result == answer_sat, f"Result mismatch: a={hex(dut.a.value)}, b={hex(dut.b.value)}, c={hex(dut.c.value)} != answer={hex(answer)}"
         
     dut._log.info("TEST DONE!")

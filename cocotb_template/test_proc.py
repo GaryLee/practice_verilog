@@ -17,8 +17,7 @@ from itertools import permutations
 async def {test_proc} (dut):
     # Generate clocks and initialization.
     clk_freq = 1e6 # The clock frequency in Hz.
-    clk_period_ns = int(1.0 / clk_freq * 1e9)
-    cocotb.start_soon(Clock(dut.clk, period_ns(clk_period_ns), unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, period_ns(freq_hz=clk_freq), unit="ns").start())
 
     # Show the information of DUT.
     dut._log.info(f"DUT: {{dut._name}}")
