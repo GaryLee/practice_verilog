@@ -189,7 +189,7 @@ class CreaterProjectUi(App):
                 )
                 yield Label("Compile args:")
                 yield Input(
-                    placeholder="Compile arguments. Eg, -D xxx=yyy.",
+                    placeholder="Compile arguments. Eg, -g2012 -D xxx=yyy.",
                     id="compile_args",
                     tooltip="Enter the compile arguments",
                 )
