@@ -11,10 +11,10 @@ VERILOG_SOURCES = $(wildcard *.v) $(wildcard *.sv) $(wildcard *.vhdl)
 TOPLEVEL = dut
 
 # The name of module for test.
-MODULE = test_proc
+COCOTB_TEST_MODULES = test_proc
 
 # The compiler arguments. Define any macro for verilog.
-COMPILE_ARGS = 
+COMPILE_ARGS = -g2012
 
 # Specify the top level language. Set it to verilog which support SystemVerilog as well.
 TOPLEVEL_LANG = verilog
@@ -23,7 +23,7 @@ TOPLEVEL_LANG = verilog
 SIM = icarus
 
 # Any arguments or flags to pass to the execution of the compiled simulation.
-SIM_ARGS = 
+SIM_ARGS =
 
 # Set WAVES to 1 to enable waveform dumping. A file with extension .fst will be created in the sim_build directory.
 # Use GTKWave to view the waveform.
