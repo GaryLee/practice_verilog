@@ -5,20 +5,34 @@
 `timescale 1ns/100ps
 
 // This module is a simple adder that adds two 8-bit inputs and outputs the result.
-module dut (
+module dut #(parameter N = 8) (
     input logic clk, 
     input logic rst_n,
-    input logic [7:0] a, // TODO: Replace with your actual inputs
-    input logic [7:0] b, // TODO: Replace with your actual inputs
-    output logic [7:0] c // TODO: Replace with your actual inputs
+    input logic [N-1:0] a,
+    input logic [N-1:0] b,
+    output logic [N-1:0] c
 );
+    logic ov;
+    logic uv;
+    logic [N-1:0] op_a;
+    logic [N-1:0] op_b;
 
-// TODO: Replace following logic with your DUT implementation.
-always_ff @(posedge clk or negedge rst_n) begin
+    op_add #(.N(N), .SIGNED(0)) u0_op_add (
+        .a(op_a),
+        .b(op_b),
+        .result(c),
+        .ov(ov),
+        .uv(uv) 
+    );
+
+    // TODO: Replace following logic with your DUT implementation.
+    always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        c <= 8'h00;
+        op_a <= '0;
+        op_b <= '0;
     end else begin
-        c <= a + b;
+        op_a <= a;
+        op_b <= b;
     end
 end 
 
