@@ -11,7 +11,7 @@ VERILOG_SOURCES = {dut_file}
 TOPLEVEL = {dut_module}
 
 # The name of module for test.
-MODULE = {test_proc}
+COCOTB_TEST_MODULES = {test_proc}
 
 # The compiler arguments. Define any macro for verilog.
 COMPILE_ARGS = {compile_args}
