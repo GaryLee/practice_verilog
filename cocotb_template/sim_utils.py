@@ -2,7 +2,7 @@
 # coding: utf-8
 
 from collections.abc import Sequence
-from cocotb.triggers import FallingEdge, RisingEdge, Edge, ClockCycles, Timer, Combine, First
+from cocotb.triggers import FallingEdge, RisingEdge, Edge, ClockCycles, Timer, Combine, First, ReadOnly
 
 class PicoSecond:
     def __rmatmul__(self, value):
@@ -92,10 +92,23 @@ def flatten(x):
         yield x
 
 async def assign_value(dut_signal, *values, sync=None):
+    """Assign values to a signal with optional synchronization."""
     assert sync is not None, "sync is required."
     for v in flatten(values):
         await (sync)
         dut_signal.value = v
+
+async def until_match(signal, value=1, clk=None, timeout=None):
+    """Wait for a signal to become a specific value. If clk is provided, wait for the signal to change on the rising edge of the clock."""
+    timeout_clock_count = 0
+    while signal.value != value:
+        if clk is not None:
+            await RisingEdge(clk)
+            timeout_clock_count += 1
+            if timeout and timeout_clock_count >= timeout:
+                raise TimeoutError(f"Timeout waiting for signal {signal} to become {value}")
+        else:
+            await ReadOnly()  # Wait for a delta cycle
 
 def period_ns(freq_hz):
     """Convert frequency to period in ns."""
