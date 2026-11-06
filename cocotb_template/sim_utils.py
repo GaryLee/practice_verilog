@@ -8,76 +8,105 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.types import Logic, LogicArray
 from cocotb.handle import LogicArrayObject, LogicObject
-from cocotb.triggers import FallingEdge, RisingEdge, Edge, ClockCycles, Timer, Combine, First
+from cocotb.triggers import (
+    FallingEdge,
+    RisingEdge,
+    Edge,
+    ClockCycles,
+    Timer,
+    Combine,
+    First,
+)
 
 import logging
 from logging.handlers import SocketHandler
 
+
 class AttrDict(dict):
-    """A dictionary that allows attribute-style access. 
-    Basic usage: 
+    """A dictionary that allows attribute-style access.
+    Basic usage:
         d = AttrDict(your_dict)
     """
-    __slots__ = () 
+
+    __slots__ = ()
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
 
+
 class PicoSecond:
     def __rmatmul__(self, value):
-        return Timer(value, units='ps')
+        return Timer(value, units="ps")
+
     def __rmul__(self, value):
-        return Timer(value, units='ps')
+        return Timer(value, units="ps")
+
 
 class NanoSecond:
     def __rmatmul__(self, value):
-        return Timer(value, units='ns')
+        return Timer(value, units="ns")
+
     def __rmul__(self, value):
-        return Timer(value, units='ns')
+        return Timer(value, units="ns")
+
 
 class MicroSecond:
     def __rmatmul__(self, value):
-        return Timer(value, units='us')
+        return Timer(value, units="us")
+
     def __rmul__(self, value):
-        return Timer(value, units='us')
+        return Timer(value, units="us")
+
 
 class MilliSecond:
     def __rmatmul__(self, value):
-        return Timer(value, units='ms')
+        return Timer(value, units="ms")
+
     def __rmul__(self, value):
-        return Timer(value, units='ms')
+        return Timer(value, units="ms")
+
 
 class Falling:
     def __rmatmul__(self, value):
         return FallingEdge(value)
+
     def __rmul__(self, value):
         return FallingEdge(value)
+
 
 class Rising:
     def __rmatmul__(self, value):
         return RisingEdge(value)
+
     def __rmul__(self, value):
         return RisingEdge(value)
+
 
 class Edge:
     def __rmatmul__(self, value):
         return Edge(value)
+
     def __rmul__(self, value):
         return Edge(value)
+
 
 class Cycles:
     def __init__(self, signal, rising=True):
         self.signal = signal
         self.rising = rising
+
     def __rmatmul__(self, value):
         return ClockCycles(self.signal, value, rising=self.rising)
+
     def __rmul__(self, value):
         return ClockCycles(self.signal, value, rising=self.rising)
 
+# Instantiate time and edge classes for convenient usage.
 ps = PicoSecond()
 ns = NanoSecond()
 us = MicroSecond()
 ms = MilliSecond()
 
+## NOTE: The parentheses after the `await` are necessary because the classes implement __rmatmul__ and __rmul__.
 # Usage: await (clk@falling)
 falling = Falling()
 # Usage: await (clk@negedge)
@@ -95,11 +124,16 @@ combine = Combine
 # Usage: await (first(clk@posedge, 10@us))
 first = First
 
-INT32_MIN = -2**31
-INT32_MAX = 2**31-1
+# Minimum value for 32-bit signed integer.
+INT32_MIN = -(2**31)
+# Maximum value for 32-bit signed integer.
+INT32_MAX = 2**31 - 1
 
+# Minimum value for 32-bit unsigned integer.
 UINT32_MIN = 0
-UINT32_MAX = 2**32-1
+# Maximum value for 32-bit unsigned integer.
+UINT32_MAX = 2**32 - 1
+
 
 def flatten(x):
     """Flatten given parameter recursively."""
@@ -109,12 +143,14 @@ def flatten(x):
     else:
         yield x
 
+
 async def assign_value(dut_signal, *values, sync=None):
     """Assign values to a signal with optional synchronization."""
     assert sync is not None, "sync is required."
     for v in flatten(values):
-        await (sync)
+        await sync
         dut_signal.value = v
+
 
 async def until_match(signal, value=1, clk=None, timeout=None):
     """Wait for a signal to become a specific value. If clk is provided, wait for the signal to change on the rising edge of the clock."""
@@ -124,20 +160,106 @@ async def until_match(signal, value=1, clk=None, timeout=None):
             await RisingEdge(clk)
             timeout_clock_count += 1
             if timeout and timeout_clock_count >= timeout:
-                raise TimeoutError(f"Timeout waiting for signal {signal} to become {value}")
+                raise TimeoutError(
+                    f"Timeout waiting for signal {signal} to become {value}"
+                )
         else:
             await ReadOnly()  # Wait for a delta cycle
+
 
 def period_ns(freq_hz):
     """Convert frequency to period in ns."""
     return int(1.0 / freq_hz * 1e9)
 
+
 def period_ps(freq_hz):
     """Convert frequency to period in ps."""
     return int(1.0 / freq_hz * 1e12)
-def logic_to_int(logic, signed=False, resolver='zeros'):
-    """Convert Logic or LogicArray to integer."""
-    assert isinstance(logic, (Logic, LogicObject, LogicArray, LogicArrayObject)), f"logic must be instance of Logic or LogicArray. {type(logic)=}."
+
+
+def setup_clock(
+    dut_signal, clk_freq_hz=None, clk_period_ns=None, start=True, soon=True
+):
+    """Generate a clock with given frequency or period.
+
+    Parameters
+    ----------
+    dut_signal: Signal
+        The signal to attach the clock to.
+    clk_freq_hz: float, optional
+        The clock frequency in Hz.
+    clk_period_ns: float, optional
+        The clock period in ns.
+    start: bool, optional
+        Whether to start the clock immediately.
+    soon: bool, optional
+        Whether to start the clock using cocotb.start_soon.
+
+    Returns
+    -------
+    Clock
+        The Clock object created and optionally started.
+    """
+    if clk_freq_hz is not None:
+        clk_period_ns = period_ns(freq_hz=clk_freq_hz)
+    assert isinstance(
+        clk_period_ns, (int, float)
+    ), "Either clk_freq_hz or clk_period_ns must be provided."
+    clk = Clock(dut_signal, int(clk_period_ns), unit="ns")
+    if start:
+        if soon:
+            cocotb.start_soon(clk.start())
+        else:
+            clk.start()
+    return clk
+
+
+def setup_logging(ip="127.0.0.1", port=19996, supress_gpi_level=logging.ERROR):
+    """Setup logging with a socket handler and optionally suppress GPI warnings.
+
+    Parameters
+    ----------
+    ip: str, optional
+        The IP address of the logging server. Default is '127.0.0.1'.
+    port: int, optional
+        The port of the logging server. Default is 19996.
+    supress_gpi_level: int, optional
+        The logging level to suppress GPI warnings. Default is logging.ERROR.
+    """
+    assert isinstance(ip, str), "ip must be a string."
+    assert isinstance(port, int), "port must be an integer."
+    logging.getLogger().addHandler(SocketHandler(ip, port))
+    if supress_gpi_level is not None:
+        logging.getLogger("gpi").setLevel(logging.ERROR)  # Suppress GPI warnings.
+
+
+def logic_to_int(logic, signed=False, resolver="zeros"):
+    """Convert Logic or LogicArray to integer.
+
+    The available resolver are:
+    - 'weak': Treat unknown values as their strong equivalent.
+    - 'zeros': Translate L and H to 0 and 1 respectively; all other non 0/1 values (like X, Z) are translated to 0.
+    - 'ones': Translate L and H to 0 and 1 respectively; all other non 0/1 values (like X, Z) are translated to 1.
+    - 'random': Translate L and H to 0 and 1 respectively; all other non 0/1 values (like X, Z) are translated to random 0 or 1.
+
+    Parameters
+    ----------
+    logic: Logic or LogicArray
+        The logic object to convert.
+    signed: bool
+        Whether to interpret the value as signed.
+    resolver: str
+        The resolver to use for resolving the logic value.
+
+    Returns
+    -------
+    int
+        The integer representation of the logic value.
+
+    """
+    assert isinstance(
+        logic, (Logic, LogicObject, LogicArray, LogicArrayObject)
+    ), f"logic must be instance of Logic or LogicArray. {type(logic)=}."
     if isinstance(logic, (Logic, LogicObject)):
         return int(logic.value.resolve(resolver))
 
@@ -146,30 +268,10 @@ def logic_to_int(logic, signed=False, resolver='zeros'):
             return logic.resolve(resolver).to_signed()
         else:
             return logic.resolve(resolver).to_unsigned()
-         
+
     if signed:
         return logic.value.resolve(resolver).to_signed()
     return logic.value.resolve(resolver).to_unsigned()
-    
-def setup_clock(dut_signal, clk_freq_hz=None, clk_period_ns=None, start=True, soon=True):
-    """Generate a clock with given frequency or period."""
-    if clk_freq_hz is not None:
-        clk_period_ns = period_ns(freq_hz=clk_freq_hz)
-    assert isinstance(clk_period_ns, (int, float)), "Either clk_freq_hz or clk_period_ns must be provided."
-    clk = Clock(dut_signal, int(clk_period_ns), unit='ns')
-    if start:
-        if soon:
-            cocotb.start_soon(clk.start())
-        else:
-            clk.start()
-    return clk
-
-def setup_logging(ip='127.0.0.1', port=19996, supress_gpi_level=logging.ERROR):
-    assert isinstance(ip, str), "ip must be a string."
-    assert isinstance(port, int), "port must be an integer."
-    logging.getLogger().addHandler(SocketHandler(ip, port))
-    if supress_gpi_level is not None:
-        logging.getLogger('gpi').setLevel(logging.ERROR) # Suppress GPI warnings.
 
 
 def value_to_bytes(value, swap=False):
@@ -196,6 +298,7 @@ def value_to_bytes(value, swap=False):
     if swap:
         bytes.reverse()
     return bytes
+
 
 def calc_bits(lsb, msb, byte_index):
     """Calculate the bit range within a specific byte for a given field.
