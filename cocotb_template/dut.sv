@@ -13,13 +13,13 @@ module {dut_module} (
     output logic [7:0] c // TODO: Replace with your actual inputs
 );
 
-// TODO: Replace following logic with your DUT implementation.
-always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-        c <= 8'h00;
-    end else begin
-        c <= a + b;
-    end
-end 
+    // TODO: Replace following logic with your DUT implementation.
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            c <= 8'h00;
+        end else begin
+            c <= a + b;
+        end
+    end 
 
 endmodule
